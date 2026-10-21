@@ -1,28 +1,28 @@
-import type { ReactNode } from 'react';
-import { ScrollView, StyleSheet, View } from 'react-native';
+import type { ReactElement, ReactNode } from 'react';
+import { ScrollView, StyleSheet, View, type RefreshControlProps } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { colors, layout, spacing } from '@/theme';
 
 type ScreenProps = {
   children: ReactNode;
-  scroll?: boolean;
+  refreshControl?: ReactElement<RefreshControlProps>;
 };
 
 /**
  * Mobile-first page shell: full-bleed background with a centered column
  * capped at `layout.maxWidth`, so it fills a phone and stays tidy on desktop.
  */
-export function Screen({ children, scroll = true }: ScreenProps) {
-  const content = <View style={styles.column}>{children}</View>;
-
+export function Screen({ children, refreshControl }: ScreenProps) {
   return (
-    <SafeAreaView style={styles.safeArea} edges={['top', 'bottom']}>
-      {scroll ? (
-        <ScrollView contentContainerStyle={styles.scrollContent}>{content}</ScrollView>
-      ) : (
-        content
-      )}
+    <SafeAreaView style={styles.safeArea} edges={['bottom']}>
+      <ScrollView
+        contentContainerStyle={styles.scrollContent}
+        refreshControl={refreshControl}
+        keyboardShouldPersistTaps="handled"
+      >
+        <View style={styles.column}>{children}</View>
+      </ScrollView>
     </SafeAreaView>
   );
 }
