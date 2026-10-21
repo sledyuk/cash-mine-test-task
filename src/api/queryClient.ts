@@ -6,12 +6,17 @@ export function createQueryClient() {
   return new QueryClient({
     defaultOptions: {
       queries: {
-        staleTime: 30_000,
-        // Don't retry client errors (bad request, auth, not found).
+        staleTime: 10_000,
+        // Definitive client errors (auth, validation, not found) won't fix themselves.
         retry: (failureCount, error) =>
-          !(error instanceof ApiError && error.status >= 400 && error.status < 500) &&
-          failureCount < 2,
+          !(error instanceof ApiError && error.rejected) && failureCount < 3,
+        // Respect the server's rate-limit hint, otherwise back off exponentially.
+        retryDelay: (attempt, error) =>
+          error instanceof ApiError && error.retryAfterMs
+            ? error.retryAfterMs
+            : Math.min(1000 * 2 ** attempt, 8000),
       },
+      mutations: { retry: false },
     },
   });
 }
