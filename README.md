@@ -2,7 +2,7 @@
 
 React Native (Expo SDK 58) app for viewing payback balances and claiming them. It ships as a static web build designed for a ~390px phone screen.
 
-**Live:** _link added after deploy_
+**Live:** https://golden-lollipop-db9353.netlify.app
 
 ## Run locally
 
@@ -47,8 +47,11 @@ Design decisions, the failure table, how AI was used, and known issues are in [N
 
 ## Deploy
 
-`vercel.json` builds with `expo export` and rewrites every route to `index.html`.
+Deployed on Netlify from the static build; `public/_redirects` is copied into `dist/` and sends every route to `index.html`.
 
 ```bash
-npx vercel --prod
+npx expo export --platform web
+npx netlify-cli deploy --dir dist --prod   # or drag dist/ onto app.netlify.com/drop
 ```
+
+`vercel.json` is also included if you prefer Vercel (`npx vercel --prod`).
