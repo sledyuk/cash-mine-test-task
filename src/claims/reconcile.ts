@@ -24,6 +24,9 @@ export type ReconciledBalance = {
  * at or after the claim's creation arrives. From then on the snapshot is the truth.
  * So the balance drops as soon as the user claims (no double claims) and does not jump
  * back up when the next snapshot still predates the claim.
+ *
+ * Likewise, a claim that settled after the snapshot was taken leaves `claiming` at once
+ * (and a failed one goes back to `available`) instead of waiting for the next snapshot.
  */
 export function reconcile(
   item: BalanceItem,
@@ -38,18 +41,20 @@ export function reconcile(
   for (const record of records) {
     if (record.body.asset !== item.asset || record.phase === 'rejected') continue;
 
-    const claim = record.claim;
-    if (claim) {
-      // Failed claims return their amount to available on the server.
-      if (claim.status === 'failed') continue;
-      // The snapshot already includes this claim.
-      if (snapshotAt >= Date.parse(claim.createdAt)) continue;
-    }
-
     const amount = toUnits(record.body.amount, item.decimals);
-    available -= amount;
-    if (!claim || claim.status === 'pending') claiming += amount;
-    inFlight += amount;
+    const claim = record.claim;
+
+    if (!claim || snapshotAt < Date.parse(claim.createdAt)) {
+      // The snapshot predates the claim. A failed claim returned its amount, so it nets out.
+      if (claim?.status === 'failed') continue;
+      available -= amount;
+      if (!claim || claim.status === 'pending') claiming += amount;
+      inFlight += amount;
+    } else if (claim.status !== 'pending' && snapshotAt < Date.parse(claim.updatedAt)) {
+      // The snapshot still counts the claim as claiming, but we already saw it settle.
+      claiming -= amount;
+      if (claim.status === 'failed') available += amount;
+    }
   }
 
   return {

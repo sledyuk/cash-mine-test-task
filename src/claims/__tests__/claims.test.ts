@@ -112,6 +112,32 @@ describe('reconcile (balance after claim)', () => {
     expect(r.inFlight).toBe(0n);
   });
 
+  it('removes a claim that settled after the snapshot from claiming', () => {
+    // Snapshot taken while the claim was pending: server says claiming 0.5.
+    const serverItem = { ...item, available: '9.5', claiming: '0.5' };
+    const asOf = '2026-10-21T08:00:15.000Z';
+    const settledAt = '2026-10-21T08:00:25.000Z';
+
+    const completed = reconcile(serverItem, asOf, [
+      accepted(claim({ status: 'completed', updatedAt: settledAt })),
+    ]);
+    expect(completed.claiming).toBe(0n);
+    expect(completed.available).toBe(eth('9.5'));
+
+    const failed = reconcile(serverItem, asOf, [
+      accepted(claim({ status: 'failed', failureReason: 'x', updatedAt: settledAt })),
+    ]);
+    expect(failed.claiming).toBe(0n);
+    expect(failed.available).toBe(eth('10'));
+
+    // Once a snapshot after settlement arrives, the server is the truth again.
+    const later = reconcile({ ...item, available: '9.5' }, '2026-10-21T08:00:30.000Z', [
+      accepted(claim({ status: 'completed', updatedAt: settledAt })),
+    ]);
+    expect(later.claiming).toBe(0n);
+    expect(later.available).toBe(eth('9.5'));
+  });
+
   it('ignores failed and rejected claims and other assets', () => {
     const failed = accepted(claim({ status: 'failed', failureReason: 'x' }));
     const rejected: ClaimRecord = { ...newRecord('k2', body, 18, 0), phase: 'rejected' };
